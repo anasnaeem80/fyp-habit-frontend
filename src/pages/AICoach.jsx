@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHabits } from "../hooks/useHabits";
 import {
   Bot,
@@ -7,10 +7,19 @@ import {
   TrendingUp,
   Clock,
   Target,
+  Brain,
 } from "lucide-react";
 
 const AICoach = () => {
-  const { habits } = useHabits();
+  const { habits, getStatistics } = useHabits();
+  const [insights, setInsights] = useState({
+    completedToday: 0,
+    totalCompletion: 0,
+    bestHabit: "No habits yet",
+    bestStreak: 0,
+    strugglingHabit: "No habits yet",
+    strugglingRate: 0,
+  });
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -21,59 +30,67 @@ const AICoach = () => {
   ]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Analyze habits to generate insights
-  const analyzeHabits = () => {
-    const completedHabits = habits.filter(
-      (habit) => habit.completion[new Date().getDay()]
-    ).length;
+  // Load insights from backend
+  useEffect(() => {
+    const loadInsights = async () => {
+      try {
+        setIsLoading(true);
+        const stats = await getStatistics();
 
-    const totalCompletion =
-      (habits.reduce((total, habit) => {
-        return (
-          total +
-          habit.completion.filter(Boolean).length / habit.completion.length
+        // Find best and struggling habits
+        const bestHabit = habits.reduce(
+          (best, habit) =>
+            habit.currentStreak > best.currentStreak ? habit : best,
+          { currentStreak: 0, name: "No habits yet" }
         );
-      }, 0) /
-        habits.length) *
-        100 || 0;
 
-    const bestHabit = habits.reduce(
-      (best, habit) =>
-        habit.currentStreak > best.currentStreak ? habit : best,
-      { currentStreak: 0 }
-    );
+        const strugglingHabit = habits.reduce((worst, habit) => {
+          const completionRate =
+            habit.completion.filter(Boolean).length / habit.completion.length;
+          const worstRate =
+            worst.completion?.filter(Boolean).length /
+              worst.completion?.length || 0;
+          return completionRate < worstRate ? habit : worst;
+        }, habits[0] || { name: "No habits yet", completion: [false] });
 
-    const strugglingHabit = habits.reduce((worst, habit) => {
-      const completionRate =
-        habit.completion.filter(Boolean).length / habit.completion.length;
-      const worstRate =
-        worst.completion.filter(Boolean).length / worst.completion.length;
-      return completionRate < worstRate ? habit : worst;
-    }, habits[0] || { completion: [false] });
-
-    return {
-      completedToday: completedHabits,
-      totalCompletion: Math.round(totalCompletion),
-      bestHabit: bestHabit.name || "No habits yet",
-      bestStreak: bestHabit.currentStreak,
-      strugglingHabit: strugglingHabit.name || "No habits yet",
-      strugglingRate: Math.round(
-        (strugglingHabit.completion.filter(Boolean).length /
-          strugglingHabit.completion.length) *
-          100
-      ),
+        setInsights({
+          completedToday: stats.completedToday || 0,
+          totalCompletion: stats.averageCompletion || 0,
+          bestHabit: bestHabit.name,
+          bestStreak: bestHabit.currentStreak || 0,
+          strugglingHabit: strugglingHabit.name,
+          strugglingRate:
+            Math.round(
+              (strugglingHabit.completion?.filter(Boolean).length /
+                strugglingHabit.completion?.length) *
+                100
+            ) || 0,
+        });
+      } catch (error) {
+        console.error("Error loading insights:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-  };
 
-  const insights = analyzeHabits();
+    if (habits.length > 0) {
+      loadInsights();
+    }
+  }, [habits, getStatistics]);
 
   const aiResponses = [
-    "Based on your progress, I suggest focusing on one habit at a time to build consistency.",
-    "Great job on your streaks! Remember that consistency is more important than perfection.",
-    "I notice you're struggling with some habits. Would you like me to help you break them down into smaller steps?",
-    "Your current completion rate is good, but there's room for improvement. Let's set some specific targets!",
-    "Based on successful habit formation research, I recommend implementing implementation intentions (if-then planning).",
+    `Based on your ${insights.totalCompletion}% completion rate, I suggest focusing on one habit at a time to build consistency.`,
+    `Great job on your ${insights.bestStreak}-day streak with "${insights.bestHabit}"! Remember that consistency is more important than perfection.`,
+    `I notice you're struggling with "${insights.strugglingHabit}" (${insights.strugglingRate}% completion). Would you like me to help you break it down into smaller steps?`,
+    `Your current completion rate is good, but there's room for improvement. Let's set some specific targets for next week!`,
+    `Based on successful habit formation research, I recommend implementing implementation intentions (if-then planning) for "${insights.strugglingHabit}".`,
+    `You've completed ${insights.completedToday} habits today. ${
+      insights.completedToday > 0
+        ? "Keep up the great work!"
+        : "Let's start with one small habit today!"
+    }`,
   ];
 
   const sendMessage = (e) => {
@@ -119,17 +136,28 @@ const AICoach = () => {
     },
     {
       title: "Analyze my progress",
-      prompt: "How am I doing with my current habits?",
+      prompt: `How am I doing with my ${habits.length} current habits?`,
     },
     {
       title: "Suggest improvements",
-      prompt: "What can I do to improve my habit consistency?",
+      prompt: `What can I do to improve my ${insights.totalCompletion}% habit consistency?`,
     },
   ];
 
   const handleQuickAction = (prompt) => {
     setInputText(prompt);
   };
+
+  if (isLoading) {
+    return (
+      <div className='p-6 flex items-center justify-center min-h-screen'>
+        <div className='text-center'>
+          <div className='w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4'></div>
+          <p className='text-gray-600'>Analyzing your habit patterns...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='p-6'>
@@ -140,7 +168,7 @@ const AICoach = () => {
         <div>
           <h2 className='text-2xl font-semibold'>AI Habit Coach</h2>
           <p className='text-gray-600'>
-            Get personalized guidance for your habit journey
+            Personalized guidance based on your {habits.length} habits
           </p>
         </div>
       </div>
@@ -156,6 +184,11 @@ const AICoach = () => {
           <p className='text-2xl font-bold text-blue-600'>
             {insights.completedToday}/{habits.length} habits
           </p>
+          <p className='text-sm text-gray-600 mt-1'>
+            {insights.completedToday === habits.length
+              ? "Perfect day! 🎉"
+              : `${habits.length - insights.completedToday} more to go`}
+          </p>
         </div>
 
         <div className='bg-white p-6 rounded-lg shadow-md'>
@@ -165,11 +198,11 @@ const AICoach = () => {
             </div>
             <h3 className='text-lg font-semibold'>Best Performer</h3>
           </div>
-          <p className='text-lg font-semibold text-green-600'>
+          <p className='text-lg font-semibold text-green-600 truncate'>
             {insights.bestHabit}
           </p>
           <p className='text-sm text-gray-600'>
-            {insights.bestStreak} day streak
+            {insights.bestStreak} day streak 🔥
           </p>
         </div>
 
@@ -180,7 +213,7 @@ const AICoach = () => {
             </div>
             <h3 className='text-lg font-semibold'>Needs Attention</h3>
           </div>
-          <p className='text-lg font-semibold text-orange-600'>
+          <p className='text-lg font-semibold text-orange-600 truncate'>
             {insights.strugglingHabit}
           </p>
           <p className='text-sm text-gray-600'>
@@ -194,16 +227,25 @@ const AICoach = () => {
           <button
             key={index}
             onClick={() => handleQuickAction(action.prompt)}
-            className='bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left'
+            className='bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left group'
           >
-            <Sparkles size={16} className='text-purple-500 mb-2' />
+            <div className='flex items-center justify-between mb-2'>
+              <Sparkles size={16} className='text-purple-500' />
+              <Brain
+                size={16}
+                className='text-gray-400 group-hover:text-purple-500 transition-colors'
+              />
+            </div>
             <p className='text-sm font-medium'>{action.title}</p>
           </button>
         ))}
       </div>
 
       <div className='bg-white rounded-lg shadow-md p-6'>
-        <h3 className='text-lg font-semibold mb-4'>Chat with Coach</h3>
+        <h3 className='text-lg font-semibold mb-4 flex items-center'>
+          <Bot size={20} className='mr-2 text-purple-500' />
+          Chat with Coach
+        </h3>
 
         <div className='h-96 overflow-y-auto mb-4 space-y-4'>
           {messages.map((message) => (
@@ -228,7 +270,10 @@ const AICoach = () => {
                       : "text-gray-500"
                   }`}
                 >
-                  {message.timestamp.toLocaleTimeString()}
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
             </div>
@@ -237,7 +282,7 @@ const AICoach = () => {
           {isTyping && (
             <div className='flex justify-start'>
               <div className='bg-gray-100 p-4 rounded-lg'>
-                <div className='flex space-x-1'>
+                <div className='flex items-center space-x-2'>
                   <div className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'></div>
                   <div
                     className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
@@ -247,6 +292,9 @@ const AICoach = () => {
                     className='w-2 h-2 bg-gray-400 rounded-full animate-bounce'
                     style={{ animationDelay: "0.4s" }}
                   ></div>
+                  <span className='text-sm text-gray-500 ml-2'>
+                    AI Coach is thinking...
+                  </span>
                 </div>
               </div>
             </div>
@@ -259,10 +307,15 @@ const AICoach = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder='Ask something about your habits...'
-            className='flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+            className='flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500'
+            disabled={isTyping}
           />
-          <button type='submit' className='btn btn-primary' disabled={isTyping}>
-            Send
+          <button
+            type='submit'
+            className='btn btn-primary px-6'
+            disabled={isTyping || inputText.trim() === ""}
+          >
+            {isTyping ? "Sending..." : "Send"}
           </button>
         </form>
       </div>

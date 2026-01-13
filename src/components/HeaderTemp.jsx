@@ -1,9 +1,17 @@
-import React from "react";
-import { Bell, Settings, User, Moon, Sun, Waves } from "lucide-react";
-import { useDarkMode } from "../../context/DarkModeContext";
+import React, { useState } from "react";
+import { Bell, User, Moon, Sun, Waves } from "lucide-react";
 
-const Header = () => {
-  const { isDarkMode, toggleDarkMode } = useDarkMode();
+const HeaderTemp = () => {
+  const [darkMode, setDarkMode] = useState(false);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    if (!darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   return (
     <header className='ml-64 bg-white dark:bg-gray-800 p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shadow-sm'>
@@ -23,10 +31,10 @@ const Header = () => {
           className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'
           aria-label='Toggle dark mode'
         >
-          {isDarkMode ? (
+          {darkMode ? (
             <Sun size={20} className='text-amber-500' />
           ) : (
-            <Moon size={20} className='text-gray-600' />
+            <Moon size={20} className='text-gray-600 dark:text-gray-400' />
           )}
         </button>
 
@@ -36,11 +44,6 @@ const Header = () => {
           <span className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center'>
             3
           </span>
-        </button>
-
-        {/* Settings */}
-        <button className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'>
-          <Settings size={20} className='text-gray-600 dark:text-gray-400' />
         </button>
 
         {/* User Profile */}
@@ -57,4 +60,4 @@ const Header = () => {
   );
 };
 
-export default Header;
+export default HeaderTemp;

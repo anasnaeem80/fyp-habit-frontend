@@ -1,28 +1,35 @@
 {
-  "name": "habit-panel",
+  "name": "habit-panel-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:full": "concurrently \"npm run dev\" \"cd backend && npm run dev\"",
+    "setup": "npm install && cd backend && npm install",
+    "start": "npm run dev"
   },
   "dependencies": {
+    "@firebase/firestore": "^4.9.3",
+    "axios": "^1.6.7",
+    "date-fns": "^3.3.1",
+    "firebase": "^10.8.0",
+    "lucide-react": "^0.309.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.15.0",
-    "lucide-react": "^0.263.1",
-    "recharts": "^2.8.0",
-    "date-fns": "^2.30.0"
+    "react-router-dom": "^6.22.0",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.3",
-    "autoprefixer": "^10.4.15",
-    "postcss": "^8.4.29",
-    "tailwindcss": "^3.3.3",
-    "vite": "^4.4.5"
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.0.8"
   }
 }

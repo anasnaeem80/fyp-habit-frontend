@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Waves } from "lucide-react";
 
 const HabitCompletionChart = ({ habits }) => {
   const data = habits.map((habit) => ({
@@ -18,15 +17,32 @@ const HabitCompletionChart = ({ habits }) => {
     currentStreak: habit.currentStreak,
   }));
 
+  // Fallback data if no habits
+  if (habits.length === 0) {
+    return (
+      <div className='flex items-center justify-center h-64'>
+        <div className='text-center text-gray-500'>
+          <p>No habits data available</p>
+          <p className='text-sm'>Add habits to see your completion chart</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='w-full'>
       <ResponsiveContainer width='100%' height={300}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray='3 3' stroke='#e2e8f0' />
-          <XAxis dataKey='name' stroke='#64748b' fontSize={12} />
-          <YAxis stroke='#64748b' fontSize={12} />
+          <XAxis
+            dataKey='name'
+            stroke='#64748b'
+            fontSize={12}
+            tick={{ fill: "#64748b" }}
+          />
+          <YAxis stroke='#64748b' fontSize={12} tick={{ fill: "#64748b" }} />
           <Tooltip
-            formatter={(value) => [`${value}%`, "Completion Rate"]}
+            formatter={(value) => [`${Math.round(value)}%`, "Completion Rate"]}
             contentStyle={{
               backgroundColor: "#1e40af",
               border: "none",
@@ -34,7 +50,12 @@ const HabitCompletionChart = ({ habits }) => {
               color: "white",
             }}
           />
-          <Bar dataKey='completion' fill='#0ea5e9' radius={[4, 4, 0, 0]} />
+          <Bar
+            dataKey='completion'
+            fill='#0ea5e9'
+            radius={[4, 4, 0, 0]}
+            name='Completion Rate'
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

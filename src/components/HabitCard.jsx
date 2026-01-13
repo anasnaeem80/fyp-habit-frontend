@@ -98,7 +98,6 @@ const HabitCard = ({ habit, onToggle, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Rest of the habit card content remains the same */}
       <div className='mb-4'>
         <div className='flex justify-between text-sm text-blue-300 dark:text-gray-400 mb-2'>
           <span>Depth Achievement</span>

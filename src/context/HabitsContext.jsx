@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { useHabits } from "../hooks/useHabits";
 
 const HabitsContext = createContext();
@@ -12,9 +12,13 @@ export const useHabitsContext = () => {
 };
 
 export const HabitsProvider = ({ children }) => {
-  const habits = useHabits();
+  const habitsData = useHabits();
+
+  const value = {
+    ...habitsData,
+  };
 
   return (
-    <HabitsContext.Provider value={habits}>{children}</HabitsContext.Provider>
+    <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>
   );
 };

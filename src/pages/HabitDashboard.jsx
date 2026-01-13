@@ -1,29 +1,94 @@
-import React from "react";
-import { useHabitsContext } from "../context/HabitsContext";
+import React, { useEffect, useState } from "react";
+import { useHabits } from "../hooks/useHabits";
 import HabitCard from "../components/HabitCard";
 import HabitCompletionChart from "../components/Charts/HabitCompletionChart";
 import StreakChart from "../components/Charts/StreakChart";
-import { Gauge, Waves, Target, Ship, Calendar, TrendingUp } from "lucide-react";
+import {
+  Gauge,
+  Waves,
+  Target,
+  Ship,
+  Calendar,
+  TrendingUp,
+  RefreshCw,
+} from "lucide-react";
 
 const HabitDashboard = () => {
-  const { habits, toggleHabitCompletion, updateHabit, deleteHabit } =
-    useHabitsContext();
+  const { habits, loading, error, toggleHabitCompletion, deleteHabit } =
+    useHabits();
+  const [stats, setStats] = useState({
+    completedToday: 0,
+    totalCompletion: 0,
+    averageStreak: 0,
+    currentDepth: 0,
+  });
 
-  const completedToday = habits.filter(
-    (habit) => habit.completion[new Date().getDay()]
-  ).length;
+  useEffect(() => {
+    if (habits.length > 0) {
+      const completedToday = habits.filter(
+        (habit) => habit.completion[new Date().getDay()]
+      ).length;
 
-  const totalCompletion =
-    (habits.reduce((total, habit) => {
-      return (
-        total +
-        habit.completion.filter(Boolean).length / habit.completion.length
-      );
-    }, 0) /
-      habits.length) *
-      100 || 0;
+      const totalCompletion =
+        (habits.reduce((total, habit) => {
+          return (
+            total +
+            habit.completion.filter(Boolean).length / habit.completion.length
+          );
+        }, 0) /
+          habits.length) *
+          100 || 0;
 
-  const currentDepth = Math.round(1240 * (totalCompletion / 100));
+      const averageStreak =
+        habits.reduce((sum, habit) => sum + habit.currentStreak, 0) /
+          habits.length || 0;
+
+      const currentDepth = Math.round(1240 * (totalCompletion / 100));
+
+      setStats({
+        completedToday,
+        totalCompletion,
+        averageStreak,
+        currentDepth,
+      });
+    } else {
+      setStats({
+        completedToday: 0,
+        totalCompletion: 0,
+        averageStreak: 0,
+        currentDepth: 0,
+      });
+    }
+  }, [habits]);
+
+  if (loading) {
+    return (
+      <div className='p-6 flex items-center justify-center min-h-screen'>
+        <div className='text-center'>
+          <div className='w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4'></div>
+          <p className='text-gray-600 dark:text-gray-400'>
+            Loading your habit fleet...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='p-6 text-center'>
+        <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4'>
+          Error: {error}
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className='btn btn-primary'
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className='p-6 space-y-6 bg-gradient-to-b from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 min-h-screen'>
@@ -35,7 +100,7 @@ const HabitDashboard = () => {
             DeepMotive
           </h1>
           <p className='text-blue-600 dark:text-gray-400 mt-2'>
-            Tracking progress at {currentDepth}m depth
+            Tracking progress at {stats.currentDepth}m depth
           </p>
         </div>
 
@@ -45,7 +110,7 @@ const HabitDashboard = () => {
               Current Depth
             </p>
             <p className='text-2xl font-bold text-cyan-600 dark:text-cyan-400'>
-              {currentDepth}m
+              {stats.currentDepth}m
             </p>
           </div>
           <div className='w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center'>
@@ -56,7 +121,6 @@ const HabitDashboard = () => {
 
       {/* Stats Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-        {/* Today's Completion */}
         <div className='bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-blue-100 dark:border-gray-700'>
           <div className='flex items-center justify-between mb-4'>
             <div className='w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center'>
@@ -70,14 +134,13 @@ const HabitDashboard = () => {
             </span>
           </div>
           <p className='text-3xl font-bold text-green-600 dark:text-green-400 mb-1'>
-            {completedToday}/{habits.length}
+            {stats.completedToday}/{habits.length}
           </p>
           <p className='text-sm text-gray-600 dark:text-gray-400'>
             Habits Completed
           </p>
         </div>
 
-        {/* Mission Completion */}
         <div className='bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-blue-100 dark:border-gray-700'>
           <div className='flex items-center justify-between mb-4'>
             <div className='w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center'>
@@ -88,14 +151,13 @@ const HabitDashboard = () => {
             </span>
           </div>
           <p className='text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1'>
-            {Math.round(totalCompletion)}%
+            {Math.round(stats.totalCompletion)}%
           </p>
           <p className='text-sm text-gray-600 dark:text-gray-400'>
             Mission Completion
           </p>
         </div>
 
-        {/* Active Habits */}
         <div className='bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-blue-100 dark:border-gray-700'>
           <div className='flex items-center justify-between mb-4'>
             <div className='w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center'>
@@ -116,7 +178,6 @@ const HabitDashboard = () => {
           </p>
         </div>
 
-        {/* Progress Circle */}
         <div className='bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-blue-100 dark:border-gray-700'>
           <div className='flex items-center justify-between mb-4'>
             <div className='w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center'>
@@ -134,7 +195,7 @@ const HabitDashboard = () => {
               <div className='w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center'>
                 <div className='w-14 h-14 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center'>
                   <span className='text-lg font-bold text-amber-600 dark:text-amber-400'>
-                    65%
+                    {Math.round(stats.totalCompletion)}%
                   </span>
                 </div>
               </div>
@@ -160,7 +221,7 @@ const HabitDashboard = () => {
                     stroke='#f59e0b'
                     strokeWidth='8'
                     strokeDasharray='283'
-                    strokeDashoffset={283 * 0.35}
+                    strokeDashoffset={283 * (1 - stats.totalCompletion / 100)}
                     strokeLinecap='round'
                   />
                 </svg>
@@ -171,7 +232,7 @@ const HabitDashboard = () => {
                 Mission Progress
               </p>
               <p className='text-lg font-bold text-amber-600 dark:text-amber-400'>
-                65% Complete
+                {Math.round(stats.totalCompletion)}% Complete
               </p>
             </div>
           </div>
@@ -219,7 +280,9 @@ const HabitDashboard = () => {
             <p className='text-gray-500 dark:text-gray-400 mb-4'>
               Start your journey by adding your first habit
             </p>
-            <button className='btn btn-primary'>Create First Habit</button>
+            <a href='/setup' className='btn btn-primary'>
+              Create First Habit
+            </a>
           </div>
         ) : (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
@@ -227,43 +290,12 @@ const HabitDashboard = () => {
               <HabitCard
                 key={habit.id}
                 habit={habit}
-                onToggle={toggleHabitCompletion}
-                onEdit={() => {
-                  /* Will implement edit modal */
-                }}
-                onDelete={deleteHabit}
+                onToggle={(day) => toggleHabitCompletion(habit.id, day)}
+                onDelete={() => deleteHabit(habit.id)}
               />
             ))}
           </div>
         )}
-      </div>
-
-      {/* Mission Briefing */}
-      <div className='bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-800 dark:to-cyan-800 rounded-xl p-6 text-white shadow-lg'>
-        <h3 className='text-xl font-semibold mb-4 flex items-center'>
-          <Target size={24} className='mr-2 text-cyan-300' />
-          Mission Briefing
-        </h3>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-center'>
-          <div className='p-4 bg-white/10 rounded-lg backdrop-blur-sm'>
-            <div className='text-2xl font-bold text-green-300'>
-              {completedToday}
-            </div>
-            <div className='text-sm text-blue-100'>Today's Successes</div>
-          </div>
-          <div className='p-4 bg-white/10 rounded-lg backdrop-blur-sm'>
-            <div className='text-2xl font-bold text-amber-300'>
-              {habits.length - completedToday}
-            </div>
-            <div className='text-sm text-blue-100'>Pending Missions</div>
-          </div>
-          <div className='p-4 bg-white/10 rounded-lg backdrop-blur-sm'>
-            <div className='text-2xl font-bold text-cyan-300'>
-              {Math.round(totalCompletion)}%
-            </div>
-            <div className='text-sm text-blue-100'>Overall Progress</div>
-          </div>
-        </div>
       </div>
     </div>
   );
