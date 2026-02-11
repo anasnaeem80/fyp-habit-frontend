@@ -1,96 +1,45 @@
 import { useState, useEffect } from "react";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDocs,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  increment,
-} from "firebase/firestore";
-import { db } from "../firebase/config";
+import api from "../api/axios";
 
 export const useChallenges = () => {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Real-time listener for challenges
+  // Fetch challenges
+  const fetchChallenges = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/challenges');
+      setChallenges(response.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching challenges:", err);
+      setError("Failed to load challenges");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const challengesRef = collection(db, "challenges");
-    const q = query(challengesRef, orderBy("createdAt", "desc"));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const challengesData = [];
-        snapshot.forEach((doc) => {
-          challengesData.push({ id: doc.id, ...doc.data() });
-        });
-        setChallenges(challengesData);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error("Error fetching challenges:", err);
-        setError(err.message);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
+    fetchChallenges();
   }, []);
 
-  // ADD new challenge
+  // ADD challenge
   const addChallenge = async (challengeData) => {
     try {
-      const challengesRef = collection(db, "challenges");
-      const newChallenge = {
+      const response = await api.post('/challenges', {
         ...challengeData,
         progress: 0,
         completed: false,
         joined: false,
-        participants: 1,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(challengesRef, newChallenge);
-      return { id: docRef.id, ...newChallenge };
+        participants: 1
+      });
+      await fetchChallenges();
+      return response.data;
     } catch (err) {
       console.error("Error adding challenge:", err);
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // UPDATE challenge
-  const updateChallenge = async (id, challengeData) => {
-    try {
-      const challengeRef = doc(db, "challenges", id);
-      await updateDoc(challengeRef, {
-        ...challengeData,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (err) {
-      console.error("Error updating challenge:", err);
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // DELETE challenge
-  const deleteChallenge = async (id) => {
-    try {
-      const challengeRef = doc(db, "challenges", id);
-      await deleteDoc(challengeRef);
-    } catch (err) {
-      console.error("Error deleting challenge:", err);
-      setError(err.message);
+      setError(err.response?.data?.message || "Failed to add challenge");
       throw err;
     }
   };
@@ -98,15 +47,12 @@ export const useChallenges = () => {
   // JOIN challenge
   const joinChallenge = async (id) => {
     try {
-      const challengeRef = doc(db, "challenges", id);
-      await updateDoc(challengeRef, {
-        joined: true,
-        participants: increment(1),
-        updatedAt: serverTimestamp(),
-      });
+      const response = await api.patch(`/challenges/${id}/join`);
+      await fetchChallenges();
+      return response.data;
     } catch (err) {
       console.error("Error joining challenge:", err);
-      setError(err.message);
+      setError(err.response?.data?.message || "Failed to join challenge");
       throw err;
     }
   };
@@ -114,24 +60,24 @@ export const useChallenges = () => {
   // UPDATE progress
   const updateProgress = async (id, amount) => {
     try {
-      const challenge = challenges.find((c) => c.id === id);
-      if (!challenge) return;
-
-      const newProgress = Math.max(
-        0,
-        Math.min(challenge.progress + amount, challenge.duration)
-      );
-      const completed = newProgress >= challenge.duration;
-
-      const challengeRef = doc(db, "challenges", id);
-      await updateDoc(challengeRef, {
-        progress: newProgress,
-        completed,
-        updatedAt: serverTimestamp(),
-      });
+      const response = await api.patch(`/challenges/${id}/progress`, { amount });
+      await fetchChallenges();
+      return response.data;
     } catch (err) {
       console.error("Error updating progress:", err);
-      setError(err.message);
+      setError(err.response?.data?.message || "Failed to update progress");
+      throw err;
+    }
+  };
+
+  // DELETE challenge
+  const deleteChallenge = async (id) => {
+    try {
+      await api.delete(`/challenges/${id}`);
+      await fetchChallenges();
+    } catch (err) {
+      console.error("Error deleting challenge:", err);
+      setError(err.response?.data?.message || "Failed to delete challenge");
       throw err;
     }
   };
@@ -141,9 +87,8 @@ export const useChallenges = () => {
     loading,
     error,
     addChallenge,
-    updateChallenge,
-    deleteChallenge,
     joinChallenge,
     updateProgress,
+    deleteChallenge,
   };
 };
